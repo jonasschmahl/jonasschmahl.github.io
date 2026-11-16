@@ -155,7 +155,7 @@ tbody tr:last-child td{border-bottom:none}
     </div>
     <div class="hdr-txt">
       <h1>Analytics Drills</h1>
-      <div class="sub" id="sub">Three a day</div>
+      <div class="sub" id="sub">Five a day</div>
     </div>
     <div class="streak" id="streak">—</div>
   </header>
@@ -701,7 +701,7 @@ const DRILLS = [
 
 /* --------------------------- STATE --------------------------- */
 const KEY = "pmDrills.v1";
-const DAILY = 3;
+const DAILY = 5;
 const blank = () => ({ start:todayStr(), items:{}, days:{}, commits:[], lastDay:null, streak:0 });
 
 function todayStr(d){ d=d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }

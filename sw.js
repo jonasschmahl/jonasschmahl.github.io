@@ -1,7 +1,7 @@
 /* Analytics Drills — offline cache.
    The app is fully self-contained, so caching the shell is enough.
    Bump CACHE when index.html changes to force an update. */
-const CACHE = "drills-v1";
+const CACHE = "drills-v2";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg", "./icon-maskable.svg"];
 
 self.addEventListener("install", e => {
