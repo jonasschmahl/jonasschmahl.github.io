@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analytics Drills</title>
+<meta name="theme-color" content="#1f6feb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Drills">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%231f6feb'/%3E%3Cg fill='white'%3E%3Crect x='42' y='96' width='22' height='44' rx='4'/%3E%3Crect x='79' y='70' width='22' height='70' rx='4'/%3E%3Crect x='116' y='44' width='22' height='96' rx='4'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+:root{
+  color-scheme: light;
+  --bg:#ffffff; --surface:#f6f7f9; --surface2:#eef0f3;
+  --text:#14171a; --muted:#5c6670; --line:#dfe3e8;
+  --accent:#1f6feb; --accent-soft:#e7f0fe;
+  --good:#1a7f45; --good-soft:#e4f4ea;
+  --bad:#b3261e; --bad-soft:#fcebea;
+  --warn:#8a5a00; --warn-soft:#fdf3e0;
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  -webkit-text-size-adjust:100%;
+}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.wrap{max-width:620px;margin:0 auto;padding:14px 14px 40px}
+
+/* header */
+header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.logo{width:30px;height:30px;border-radius:8px;background:var(--accent);flex:none;display:flex;align-items:center;justify-content:center}
+.logo svg{width:18px;height:18px}
+h1{font-size:17px;margin:0;font-weight:650;letter-spacing:-.01em}
+.sub{font-size:12.5px;color:var(--muted);margin-top:1px}
+.hdr-txt{flex:1;min-width:0}
+.streak{font-size:12.5px;font-weight:650;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 10px;white-space:nowrap}
+
+/* progress */
+.prog{display:flex;gap:6px;margin:0 0 16px}
+.pip{flex:1;height:5px;border-radius:999px;background:var(--surface2);transition:background .25s}
+.pip.done{background:var(--good)}
+.pip.wrong{background:var(--bad)}
+.pip.active{background:var(--accent)}
+
+/* card */
+.card{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.tagrow{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--surface2);color:var(--muted)}
+.tag.rev{background:var(--warn-soft);color:var(--warn)}
+.stem{font-size:16.5px;line-height:1.5;margin:0 0 14px}
+.stem strong{font-weight:650}
+
+table{width:100%;border-collapse:collapse;margin:0 0 14px;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:12px;color:var(--muted);font-weight:600;text-transform:none}
+tbody tr:last-child td{border-bottom:none}
+
+.q{font-size:15px;font-weight:650;margin:0 0 12px}
+
+/* options */
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{
+  display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;
+  background:var(--surface);border:1.5px solid var(--line);border-radius:12px;
+  padding:13px 14px;font:inherit;font-size:15px;line-height:1.45;color:var(--text);
+  cursor:pointer;transition:border-color .15s,background .15s;
+}
+.opt:active{background:var(--surface2)}
+.opt .ltr{flex:none;width:21px;height:21px;border-radius:6px;background:var(--bg);border:1.5px solid var(--line);
+  font-size:11.5px;font-weight:700;color:var(--muted);display:flex;align-items:center;justify-content:center;margin-top:1px}
+.opt[disabled]{cursor:default}
+.opt.sel{border-color:var(--accent)}
+.opt.correct{border-color:var(--good);background:var(--good-soft)}
+.opt.correct .ltr{background:var(--good);border-color:var(--good);color:#fff}
+.opt.incorrect{border-color:var(--bad);background:var(--bad-soft)}
+.opt.incorrect .ltr{background:var(--bad);border-color:var(--bad);color:#fff}
+.opt.dim{opacity:.5}
+
+/* numeric */
+.numrow{display:flex;gap:8px;align-items:stretch}
+.numrow input{
+  flex:1;min-width:0;font:inherit;font-size:19px;font-weight:650;font-variant-numeric:tabular-nums;
+  padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);
+}
+.numrow input:focus{outline:none;border-color:var(--accent);background:var(--bg)}
+.unit{font-size:13px;color:var(--muted);margin-top:8px}
+.btn{
+  font:inherit;font-size:15px;font-weight:650;padding:13px 18px;border-radius:12px;border:none;
+  background:var(--accent);color:#fff;cursor:pointer;flex:none;
+}
+.btn:active{opacity:.85}
+.btn.ghost{background:var(--surface);color:var(--text);border:1.5px solid var(--line)}
+.btn.block{width:100%;margin-top:12px}
+.btn[disabled]{opacity:.45;cursor:default}
+
+/* feedback */
+.fb{margin-top:14px;border-radius:12px;padding:14px;font-size:14.5px;line-height:1.55;border:1px solid}
+.fb.ok{background:var(--good-soft);border-color:#bfe3cd}
+.fb.no{background:var(--bad-soft);border-color:#f3cbc8}
+.fb .verdict{font-weight:750;font-size:13px;letter-spacing:.03em;text-transform:uppercase;margin-bottom:7px}
+.fb.ok .verdict{color:var(--good)}
+.fb.no .verdict{color:var(--bad)}
+.fb p{margin:0 0 9px}
+.fb p:last-child{margin-bottom:0}
+.trap{margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,.09);font-size:13.5px;color:var(--muted)}
+.trap b{color:var(--text);font-weight:650}
+
+/* done screen */
+.done-h{font-size:21px;font-weight:700;margin:0 0 6px;letter-spacing:-.01em}
+.done-p{color:var(--muted);font-size:14.5px;margin:0 0 18px}
+.commit label{display:block;font-size:14px;font-weight:650;margin-bottom:6px}
+.commit .hint{font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.5}
+.commit textarea{
+  width:100%;font:inherit;font-size:15px;padding:12px;border:1.5px solid var(--line);
+  border-radius:12px;background:var(--surface);color:var(--text);resize:vertical;min-height:84px;
+}
+.commit textarea:focus{outline:none;border-color:var(--accent);background:var(--bg)}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 10px;text-align:center}
+.stat .n{font-size:20px;font-weight:720;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat .l{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
+
+.catrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.catrow:last-child{border-bottom:none}
+.catrow .nm{flex:1;min-width:0}
+.bar{width:74px;height:6px;border-radius:999px;background:var(--surface2);overflow:hidden;flex:none}
+.bar i{display:block;height:100%;background:var(--good);border-radius:999px}
+.bar i.low{background:var(--bad)}
+.bar i.mid{background:var(--warn)}
+.pct{width:40px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px;flex:none}
+
+.sect-h{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:22px 0 8px}
+.log{font-size:14px;line-height:1.55}
+.log .e{padding:10px 0;border-bottom:1px solid var(--line)}
+.log .e:last-child{border-bottom:none}
+.log .d{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.foot{margin-top:26px;font-size:12.5px;color:var(--muted);text-align:center;line-height:1.6}
+.linkbtn{background:none;border:none;color:var(--accent);font:inherit;font-size:12.5px;cursor:pointer;padding:4px;text-decoration:underline}
+</style>
+</head>
+<body>
+<h2 class="sr-only">A daily spaced-repetition drill app for product analytics reasoning: three scenario questions per day covering selection bias, multiple comparisons, composite metrics, experiment validity, chart integrity and decision framing.</h2>
+<div class="wrap">
+  <header>
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="#fff"><rect x="3" y="13" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+    </div>
+    <div class="hdr-txt">
+      <h1>Analytics Drills</h1>
+      <div class="sub" id="sub">Three a day</div>
+    </div>
+    <div class="streak" id="streak">—</div>
+  </header>
+
+  <div class="prog" id="prog" aria-hidden="true"></div>
+  <main id="main"></main>
+
+  <div class="foot">
+    <span id="footnote"></span><br>
+    <button class="linkbtn" id="reset">Reset all progress</button>
+  </div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------
+   DRILL BANK
+   cat: SEL selection bias | MCOMP multiple comparisons | COMPO composite metrics
+        VALID experiment validity | CHART chart integrity | DECIDE decision framing
+   type: 'mc' (answer = index) | 'num' (answer = number, tol = absolute tolerance)
+----------------------------------------------------------------*/
+const CATS = {
+  SEL:   "Selection bias & causation",
+  MCOMP: "Multiple comparisons",
+  COMPO: "Composite metrics",
+  VALID: "Experiment validity",
+  CHART: "Chart integrity",
+  DECIDE:"Decision framing"
+};
+
+const DRILLS = [
+/* ===================== SELECTION BIAS ===================== */
+{id:"SEL1",cat:"SEL",type:"mc",
+ stem:"Users who enable push notifications retain <strong>1.8×</strong> better at D60 than users who don't. A colleague proposes auto-enabling push for everyone.",
+ q:"What's the strongest objection?",
+ opts:[
+  "The 1.8× is probably not statistically significant.",
+  "Users who choose to enable push were already more committed — the gap measures who they are, not what push did.",
+  "Auto-enabling push may breach notification consent rules.",
+  "Retention is the wrong metric; we should look at conversion."],
+ a:1,
+ why:"Opting into notifications is the user telling you they're already invested. The 1.8× is mostly a description of <em>which users opt in</em>, not an effect of push. Auto-enabling gives push to the 'wouldn't have opted in' group, where the effect could be zero or negative.",
+ trap:"<b>Self-selection.</b> Whenever the group is defined by a choice the user made, the choice is the confound."},
+
+{id:"SEL2",cat:"SEL",type:"mc",
+ stem:"Students who answer <strong>≥50 questions in week 1</strong> convert to paid at 34%. Students who answer fewer convert at 9%. Proposal: redesign onboarding to drive everyone to 50 questions.",
+ q:"What's the core flaw?",
+ opts:[
+  "50 is an arbitrary threshold.",
+  "Week 1 is too short a window to measure.",
+  "Underlying intent drives both the 50 questions and the conversion — forcing the behaviour doesn't install the intent.",
+  "The comparison groups are different sizes."],
+ a:2,
+ why:"A student cramming for an exam next month answers 50 questions <em>and</em> buys. Pushing a casual browser to 50 questions doesn't turn them into that student. You'd be copying the symptom, not the cause.",
+ trap:"<b>Behavioural proxy for intent.</b> 'Magic number' analyses are almost always this. They're useful as a <em>predictive</em> signal (forecasting, lead scoring) and dangerous as a <em>causal</em> one (roadmap)."},
+
+{id:"SEL3",cat:"SEL",type:"mc",
+ stem:"Marketing emailed 40,000 lapsed users. <strong>12% returned</strong> within two weeks. The team is calling the campaign a success and wants budget to scale it.",
+ q:"What single thing would you ask for?",
+ opts:[
+  "The open rate and click-through rate.",
+  "A holdout group of lapsed users who received no email.",
+  "The revenue generated by returning users.",
+  "A breakdown of returns by email subject line."],
+ a:1,
+ why:"Some share of lapsed users return on their own every fortnight — that's the baseline. Without a holdout you cannot tell whether the campaign produced 12 points, 2 points, or zero. The other three answers all measure the campaign against itself.",
+ trap:"<b>No counterfactual.</b> 'X% of people we touched did the thing' is never an effect size. Keeping a permanent 5% holdout on lifecycle messaging costs almost nothing and settles this forever."},
+
+{id:"SEL4",cat:"SEL",type:"mc",
+ stem:"Your in-app NPS survey returns a score of <strong>+62</strong>, collected from users who completed the survey during a study session.",
+ q:"How should you characterise this number?",
+ opts:[
+  "A reliable read on overall user sentiment.",
+  "An upper bound — the people engaged enough to finish an in-app survey mid-session are your happiest users.",
+  "Invalid; NPS is never meaningful.",
+  "Too low for a product in this category."],
+ a:1,
+ why:"The frustrated user already closed the tab. In-app surveys sample the engaged, so the score is biased upward. It's still useful for <em>tracking change over time</em> if the method is held constant — just not as a level.",
+ trap:"<b>Survivorship.</b> Ask who is structurally absent from the dataset. In churn research, the people you most need are the ones least likely to answer."},
+
+{id:"SEL5",cat:"SEL",type:"mc",
+ stem:"Accounts that adopt your API integration churn <strong>40% less</strong>. Sales wants to push the integration into every deal.",
+ q:"Which analysis would most move you toward believing the effect is real?",
+ opts:[
+  "Re-run the comparison with a larger sample.",
+  "Survey integrated accounts about whether the integration matters to them.",
+  "Compare each account's churn risk before vs after it adopted, within matched size and segment bands.",
+  "Check whether the 40% gap is statistically significant."],
+ a:2,
+ why:"Bigger accounts with dedicated engineering adopt APIs <em>and</em> churn less anyway. A within-account before/after comparison, matched on the obvious confounds, gets much closer to isolating the integration. Asking users, or adding sample size to a biased comparison, does not.",
+ trap:"<b>Confounding by account maturity.</b> More data never fixes bias — it just gives you a tighter estimate of the wrong number."},
+
+{id:"SEL6",cat:"SEL",type:"mc",
+ stem:"You ran a re-engagement intervention on the <strong>100 lowest-engagement users</strong> last month. This month their average engagement is up <strong>40%</strong>.",
+ q:"What's the most likely explanation?",
+ opts:[
+  "The intervention worked and should be scaled.",
+  "Regression to the mean — a group selected for being extreme drifts back toward average on its own.",
+  "The engagement metric was redefined.",
+  "Seasonality."],
+ a:1,
+ why:"Some of those 100 were at their personal floor last month by chance — illness, exam week, holiday. Next month they're back to normal with or without you. Any group selected for an extreme value will look like it improved.",
+ trap:"<b>Regression to the mean.</b> This is why 'we fixed our worst accounts and they got better' is nearly always unfalsifiable without a control group drawn from the same extreme."},
+
+{id:"SEL7",cat:"SEL",type:"mc",
+ stem:"You need to present this in Monday's review: <em>users of Feature X spend 3× longer in the app than non-users.</em>",
+ q:"Which framing is defensible?",
+ opts:[
+  "\"Feature X drives a 3× increase in time in app.\"",
+  "\"Feature X users spend 3× longer. That's a correlation, not an effect — here's the test that would tell us which way it runs.\"",
+  "\"Feature X is our most engaging feature.\"",
+  "\"We should invest more in Feature X given its 3× engagement impact.\""],
+ a:1,
+ why:"The number is real; the causal claim isn't established. Saying so out loud — and arriving with the test already designed — is what separates a PM who reports numbers from one who's trusted with them.",
+ trap:"<b>Verb smuggling.</b> 'Drives', 'lifts', 'causes', 'impact' turn a correlation into a claim. Watch your own verbs in decks."},
+
+{id:"SEL8",cat:"SEL",type:"mc",
+ stem:"Analysis finds that users who contact support in month 1 churn at <strong>2.1×</strong> the rate of users who don't. A proposal circulates to make support harder to reach so fewer users 'enter the churn path'.",
+ q:"What's wrong here?",
+ opts:[
+  "The sample excludes users who churned before month 1.",
+  "The causation runs backwards — users contact support because they're already in trouble; hiding support removes the signal, not the problem.",
+  "2.1× is not a large enough effect to act on.",
+  "Support contact rates vary too much by segment to compare."],
+ a:1,
+ why:"Support contact is a <em>symptom</em> of a struggling user. Suppressing it would improve the correlation and worsen the business. This sounds absurd stated plainly, which is exactly why it's worth practising — in a real deck it arrives dressed as 'reduce support-driven churn'.",
+ trap:"<b>Reverse causation.</b> Always ask: could the outcome be causing the predictor? Fire alarms correlate with fire damage."},
+
+/* ===================== MULTIPLE COMPARISONS ===================== */
+{id:"MC1",cat:"MCOMP",type:"mc",
+ stem:"An A/B test on trial-to-paid came back flat overall (8.1% vs 8.3%, p=0.34). An analyst slices the data and finds that <strong>German users on mobile arriving via organic search</strong> convert 11.2% vs 7.9%, and that slice is significant at p&lt;0.05.",
+ q:"What do you do?",
+ opts:[
+  "Ship to that segment — the effect is significant there.",
+  "Ship to everyone; the segment proves the mechanism works.",
+  "Treat it as a hypothesis, not a result, and run a new test powered on that segment.",
+  "Re-run the overall test for longer to confirm."],
+ a:2,
+ why:"Slice a flat test enough ways and something will clear p&lt;0.05 by chance — that's literally what a 5% false-positive rate means. Three slices deep is a strong tell that someone searched until they found something. The finding might be real; the only way to know is a fresh, pre-registered test.",
+ trap:"<b>Post-hoc subgroup analysis.</b> This is the single most common route by which teams ship features that do nothing."},
+
+{id:"MC2",cat:"MCOMP",type:"num",
+ stem:"You test a feature across <strong>20 independent user segments</strong>. In truth the feature has <strong>exactly zero effect</strong> everywhere. You use the conventional p&lt;0.05 threshold on each segment.",
+ q:"How many segments do you expect to come back 'statistically significant' purely by chance?",
+ unit:"segments", a:1, tol:0.2,
+ why:"20 × 0.05 = <strong>1</strong>. p&lt;0.05 means a 5% false-positive rate per test. Run twenty tests on nothing and one 'finding' is the expected yield, not a surprise.",
+ trap:"<b>Internalise this number.</b> When someone presents one winning segment out of twenty, they've presented noise with a confidence interval around it."},
+
+{id:"MC3",cat:"MCOMP",type:"mc",
+ stem:"Your team checks the experiment dashboard every morning and ships the variant the moment the primary metric crosses p&lt;0.05.",
+ q:"What's the problem?",
+ opts:[
+  "Daily data is too noisy to read.",
+  "Repeated looks inflate the false-positive rate far above 5% — a null test will eventually cross the line by chance if you keep checking.",
+  "p-values can't be computed on partial data.",
+  "It's fine as long as the sample is large enough."],
+ a:1,
+ why:"A p-value assumes one look at a pre-specified sample size. Check daily for three weeks and you get ~21 chances to catch a random fluctuation. The true false-positive rate climbs toward 20–30%. Stopping the instant it's favourable also guarantees you stop on the noisiest possible reading.",
+ trap:"<b>Peeking / optional stopping.</b> Fix the duration in advance, or use a method designed for monitoring (sequential testing). Don't check daily and stop on green."},
+
+{id:"MC4",cat:"MCOMP",type:"mc",
+ stem:"A test tracked six metrics. Five moved nothing. The sixth — average session length — rose with <strong>p = 0.04</strong>. The deck headline is \"Variant significantly improves engagement.\"",
+ q:"Your response?",
+ opts:[
+  "Accept it — p=0.04 clears the bar.",
+  "Ask which metric was pre-specified as primary. One hit out of six at p=0.04 is roughly what chance produces.",
+  "Ask for the test to run longer.",
+  "Ask for the effect size instead of the p-value."],
+ a:1,
+ why:"Six metrics at a 5% false-positive rate each gives you a ~26% chance of at least one spurious hit. p=0.04 on the sixth metric checked is weak evidence. If session length was declared the primary metric before launch, it counts. If it was found afterward, it's a hypothesis.",
+ trap:"<b>Metric shopping.</b> The fix is cheap and entirely procedural: name one primary metric and your guardrails <em>before</em> the test starts."},
+
+{id:"MC5",cat:"MCOMP",type:"mc",
+ stem:"A test was significant at the end of week 2 (p=0.03). The team let it run. At the end of week 4 — full planned sample — it's p=0.21. Someone suggests reporting the week-2 result, \"since that's when it was working.\"",
+ q:"Which estimate should you trust?",
+ opts:[
+  "Week 2 — the effect may have decayed, so the early read captures the true impact.",
+  "Week 4 — the full pre-planned sample is the better estimate; week 2 was an interim look at a noisier dataset.",
+  "The average of the two.",
+  "Neither; the test is invalid and must be re-run."],
+ a:1,
+ why:"More data means less noise. The week-2 reading was one of several interim looks and you're only tempted by it because it was favourable — which is the selection effect in action. The pre-planned endpoint is the answer you committed to.",
+ trap:"<b>Cherry-picking the endpoint.</b> If a genuine novelty effect is suspected, that's a separate, testable claim — not a licence to report the earlier number."},
+
+{id:"MC6",cat:"MCOMP",type:"num",
+ stem:"You test <strong>5 variants</strong> against one control. Every variant is truly null — no real effect anywhere. Each comparison uses p&lt;0.05.",
+ q:"What's the chance of at least one false 'winner'? (whole %)",
+ unit:"%", a:23, tol:3,
+ why:"1 − 0.95⁵ = 0.226, so about <strong>23%</strong>. Roughly a one-in-four chance that a five-arm test on nothing hands you a winner to ship.",
+ trap:"<b>Family-wise error.</b> Multi-arm tests need a correction (Bonferroni: divide your threshold by the number of arms) or a pre-specified primary comparison. Five arms at p&lt;0.05 each is not a 5% error rate."},
+
+{id:"MC7",cat:"MCOMP",type:"mc",
+ stem:"An analyst explored the data, found that power users respond well to a change, and writes the summary as: <em>\"As hypothesised, the variant improves outcomes for power users.\"</em> The hypothesis was formed after seeing the result.",
+ q:"Why does this matter?",
+ opts:[
+  "It doesn't — the finding is the same either way.",
+  "It converts an exploratory finding into a confirmed one, hiding the fact that many slices were examined and stripping the reader's ability to discount it.",
+  "It violates statistical assumptions about normality.",
+  "Power users are not a valid segment."],
+ a:1,
+ why:"The data is identical; what changed is what the reader can infer from it. 'We looked at 12 slices and this one stood out' and 'we predicted this in advance and confirmed it' carry completely different evidential weight. Presenting the first as the second isn't a technical error, it's a reporting one.",
+ trap:"<b>HARKing</b> (Hypothesising After Results are Known). Label exploratory work as exploratory. It's still valuable — it generates the next test."},
+
+/* ===================== COMPOSITE METRICS ===================== */
+{id:"CO1",cat:"COMPO",type:"num",
+ stem:"A redesigned review screen shipped four weeks ago.",
+ table:[["Metric","Before","After"],["Sessions per weekly active user","4.1","5.3"],["Questions answered per session","12","7"]],
+ q:"Questions answered per user per week changed by what %? (negative for a decline)",
+ unit:"%", a:-25, tol:3,
+ why:"4.1 × 12 = 49.2 before. 5.3 × 7 = 37.1 after. That's <strong>−24.6%</strong>. 'Sessions per user up 29%' is in the deck; a quarter of all study volume quietly disappeared.",
+ trap:"<b>Ratio metrics hide the product.</b> Whenever a per-X metric moves, multiply it back out. Ten seconds of arithmetic beats an hour of discussion."},
+
+{id:"CO2",cat:"COMPO",type:"mc",
+ stem:"Checkout conversion rose on mobile (3.1% → 3.4%) <em>and</em> on desktop (6.2% → 6.5%). Blended conversion across both <strong>fell</strong> from 4.9% to 4.6%.",
+ q:"What happened?",
+ opts:[
+  "One of the numbers must be wrong.",
+  "The traffic mix shifted toward mobile, which converts worse — each segment improved while the weighted average fell.",
+  "Conversion is being measured over different windows.",
+  "There's a third device category dragging the blend down."],
+ a:1,
+ why:"Classic Simpson's paradox. If mobile goes from 40% to 70% of traffic, the blend gets pulled toward mobile's lower rate even though both segments improved. Both facts are true; neither alone is the story.",
+ trap:"<b>Mix shift.</b> When a blended metric contradicts its parts, look at the weights before you question the data."},
+
+{id:"CO3",cat:"COMPO",type:"num",
+ stem:"Revenue = users × conversion rate × ARPU. This quarter: users <strong>+10%</strong>, conversion <strong>−5%</strong>, ARPU <strong>+3%</strong>.",
+ q:"Net change in revenue? (%, one decimal is fine)",
+ unit:"%", a:7.6, tol:0.8,
+ why:"1.10 × 0.95 × 1.03 = 1.0764 → <strong>+7.6%</strong>. Note it isn't 10 − 5 + 3 = 8; multiplicative chains don't add, though at small percentages the approximation is close enough to mislead you comfortably.",
+ trap:"<b>Decompose before you explain.</b> Knowing which of the three factors moved tells you which team owns the result."},
+
+{id:"CO4",cat:"COMPO",type:"mc",
+ stem:"Average session length is up <strong>20%</strong> month over month. Nothing shipped.",
+ q:"Which explanation would you check first?",
+ opts:[
+  "Users are finding the product more valuable.",
+  "Low-engagement users churned, so the remaining population has a higher average — the numerator didn't improve, the denominator shrank.",
+  "A competitor had an outage.",
+  "Seasonal study patterns."],
+ a:1,
+ why:"Averages move when the population changes. Losing your shortest sessions raises the mean without a single user behaving better. Check total session time and active user count before celebrating — if both fell, this is a churn metric wearing an engagement costume.",
+ trap:"<b>Denominator drift.</b> For any average that moves without a cause, check whether the population it averages over changed."},
+
+{id:"CO5",cat:"COMPO",type:"num",
+ stem:"Your product has <strong>40,000 DAU</strong> and <strong>250,000 MAU</strong>.",
+ q:"What is the DAU/MAU stickiness ratio? (whole %)",
+ unit:"%", a:16, tol:1,
+ why:"40,000 ÷ 250,000 = <strong>16%</strong>. The average monthly user shows up roughly 4–5 days a month. For a study tool with exam-driven usage that may be fine; for a daily-habit product it's weak.",
+ trap:"<b>Know your handful of standing ratios cold.</b> Being able to compute stickiness, funnel yield and payback in your head is what lets you challenge a number live in the room."},
+
+{id:"CO6",cat:"COMPO",type:"mc",
+ stem:"A slide reports: <em>\"D30 retention improved from 38% to 41%.\"</em>",
+ q:"What's the first thing you need before believing it?",
+ opts:[
+  "The confidence interval.",
+  "The cohort definitions and measurement windows — that both numbers count the same event, for comparable cohorts, over an equally mature window.",
+  "The absolute number of retained users.",
+  "Which segment drove the change."],
+ a:1,
+ why:"Retention numbers break on definitions far more often than on statistics. A cohort that hasn't fully aged 30 days, a changed definition of 'active', a different acquisition mix — any of these produces three points of movement. Check the measurement before interrogating the result.",
+ trap:"<b>Definition drift.</b> The most common cause of an inexplicable metric move is that someone changed what the metric means."},
+
+{id:"CO7",cat:"COMPO",type:"num",
+ stem:"Funnel for the month: <strong>100,000</strong> visitors → <strong>22%</strong> sign up → <strong>35%</strong> of signups activate → <strong>18%</strong> of activated users pay.",
+ q:"How many paying users? (whole number)",
+ unit:"users", a:1386, tol:20,
+ why:"100,000 × 0.22 × 0.35 × 0.18 = <strong>1,386</strong>. Worth noticing: a 5-point gain at activation (35% → 40%) yields ~198 extra payers, while a 5-point gain at signup (22% → 27%) yields ~315. The widest stage isn't always the best one to fix — the one with the most traffic flowing through it usually is.",
+ trap:"<b>Always carry the funnel to absolute numbers.</b> Percentages make stages look equally important; they aren't."},
+
+{id:"CO8",cat:"COMPO",type:"mc",
+ stem:"Support reports: <em>\"Tickets per active user fell 30% this year.\"</em> The support team says they're drowning.",
+ q:"Can both be true?",
+ opts:[
+  "No — one of them has a data error.",
+  "Yes. User growth outpaced ticket growth, so the per-user rate fell while absolute ticket volume rose.",
+  "Yes, but only if ticket severity increased.",
+  "No — per-user rates and absolute volume always move together."],
+ a:1,
+ why:"Double the users and raise tickets by 40% and you get a 30% drop per user alongside a 40% rise in workload. The product metric improved; the staffing problem is real. Both numbers are honest and they answer different questions.",
+ trap:"<b>Rate vs absolute.</b> Rates are for product health. Absolutes are for capacity and cost. Quoting the wrong one at the wrong audience destroys trust fast."},
+
+/* ===================== EXPERIMENT VALIDITY ===================== */
+{id:"VA1",cat:"VALID",type:"mc",
+ stem:"A test configured as a 50/50 split delivered <strong>103,400</strong> users to control and <strong>96,600</strong> to variant.",
+ q:"What's your move?",
+ opts:[
+  "Nothing — a 3% imbalance is within normal variation.",
+  "Stop and debug the assignment. At n=200,000 this imbalance is far outside chance, so something is filtering users differently between arms and the results aren't trustworthy.",
+  "Weight the results to correct the imbalance.",
+  "Re-run with a 60/40 split."],
+ a:1,
+ why:"At that sample size, random assignment should land within a few hundred of even. A 6,800-user gap means something systematic — a variant that errors on certain browsers, a redirect dropping users, a bot filter applied unevenly. Whatever caused it likely also made the arms non-comparable.",
+ trap:"<b>Sample Ratio Mismatch.</b> Check it first, before you look at a single result metric. SRM invalidates a test outright; no amount of weighting rescues it."},
+
+{id:"VA2",cat:"VALID",type:"mc",
+ stem:"A redesigned navigation shows a <strong>+14%</strong> lift in feature discovery in week 1, <strong>+6%</strong> in week 2, and <strong>+1%</strong> by week 4.",
+ q:"Most likely interpretation?",
+ opts:[
+  "The feature is losing effectiveness and should be rolled back.",
+  "A novelty effect — existing users explored the unfamiliar layout, then settled. The week-4 number is closer to the steady state.",
+  "The test is underpowered.",
+  "Seasonality is masking the true effect."],
+ a:1,
+ why:"Change attracts clicks regardless of quality. The decay curve is the signature. The honest read is roughly +1%, and the more informative analysis is new users only — they have no old layout to be surprised by.",
+ trap:"<b>Novelty and primacy.</b> For any UI change, segment new vs existing users and run long enough to see the curve flatten. A single-week readout on a redesign is nearly worthless."},
+
+{id:"VA3",cat:"VALID",type:"mc",
+ stem:"You're about to test a change designed to raise <strong>onboarding completion rate</strong>.",
+ q:"Which guardrail metric matters most?",
+ opts:[
+  "Time spent in onboarding.",
+  "A downstream outcome — day-7 activation or first real session — since completion can be raised by removing useful steps.",
+  "Onboarding error rate.",
+  "Support ticket volume."],
+ a:1,
+ why:"Completion rate is trivially gameable: delete steps and it goes up. The question is whether people who finish are any better prepared. Without a downstream guardrail you can optimise this metric to 100% and damage the product.",
+ trap:"<b>Local metric, global harm.</b> For every metric you optimise, name the metric it could be improved at the expense of — and watch that one too."},
+
+{id:"VA4",cat:"VALID",type:"mc",
+ stem:"A two-day test on <strong>400 users</strong> found no significant difference. The team concludes the change doesn't work and drops it.",
+ q:"What's wrong with that conclusion?",
+ opts:[
+  "Nothing — no significance means no effect.",
+  "The test was almost certainly underpowered. At n=400 only an enormous effect would register; absence of evidence isn't evidence of absence.",
+  "Two days isn't long enough for users to notice.",
+  "They should have used a one-tailed test."],
+ a:1,
+ why:"With 400 users you might detect a 10-point swing. A real 2-point improvement — which could be worth a lot of money — would be invisible. The correct conclusion is 'this test couldn't answer the question', not 'the answer is no'.",
+ trap:"<b>Underpowered nulls.</b> Before launch, compute the minimum detectable effect. If the MDE is larger than any plausible real effect, the test is theatre — don't run it."},
+
+{id:"VA5",cat:"VALID",type:"mc",
+ stem:"You're testing a collaborative study-group feature. Assignment is per-user, and users in the variant can invite users in the control into shared groups.",
+ q:"What's the problem?",
+ opts:[
+  "The variant group is self-selecting.",
+  "Control users are exposed to the treatment through their peers, shrinking the measured difference between arms.",
+  "Invitations introduce a novelty effect.",
+  "Group features can't be A/B tested."],
+ a:1,
+ why:"Your control is contaminated: it partially receives the treatment. The measured effect gets biased toward zero, so a real win can look flat. For anything social, randomise at the level of the unit that interacts — the study group, the institution, the region.",
+ trap:"<b>Interference / network effects.</b> Ask: can a variant user's behaviour touch a control user? If yes, per-user randomisation is the wrong design."},
+
+{id:"VA6",cat:"VALID",type:"mc",
+ stem:"Your primary metric (trial-to-paid) rose <strong>+0.6pp, p=0.01</strong>. Your guardrail (30-day refund rate) also rose, from <strong>4.1% to 5.8%</strong>.",
+ q:"What's the call?",
+ opts:[
+  "Ship — the primary metric is significant and that's what you tested for.",
+  "Work out whether the extra conversions survive refunds in net revenue terms, and investigate whether the change is overselling.",
+  "Ship, then fix refunds in a follow-up.",
+  "Kill it — any guardrail regression is disqualifying."],
+ a:1,
+ why:"A conversion lift paired with a refund spike usually means you've converted people who shouldn't have converted. Net it out: if the extra payers mostly refund, you've bought churn and support load. If net revenue holds, it may still be worth shipping with the overselling fixed.",
+ trap:"<b>Guardrails are decision inputs, not vetoes.</b> The useful move is quantifying the trade-off, not reflexively shipping or killing."},
+
+{id:"VA7",cat:"VALID",type:"mc",
+ stem:"A test is planned. Someone asks what you'll do if the result is flat.",
+ q:"What's the best answer to have ready <em>before</em> launch?",
+ opts:[
+  "We'll decide once we see the data.",
+  "A written kill criterion: the minimum effect worth shipping, the planned duration, and what a flat result means we do next.",
+  "We'll run it longer until it reaches significance.",
+  "We'll segment the results to find where it worked."],
+ a:1,
+ why:"Every bad experiment conversation — extend it, slice it, re-run it — is downstream of nobody having agreed what a null result means. Writing it down beforehand costs ten minutes and removes the argument entirely, because the decision was made when nobody was invested in the outcome.",
+ trap:"<b>Pre-registration.</b> Primary metric, MDE, duration, guardrails, kill criterion. Five lines in the test doc."},
+
+/* ===================== CHART INTEGRITY ===================== */
+{id:"CH1",cat:"CHART",type:"mc",
+ stem:"A colleague's board slide shows weekly revenue climbing steeply over 8 weeks. You notice the <strong>final week is partial</strong> — data runs through Wednesday — and is plotted as a full bar.",
+ q:"What do you do?",
+ opts:[
+  "Nothing — it's their slide and their call.",
+  "Raise it in the board meeting so the record is accurate.",
+  "Message them before the meeting: flag the partial week, suggest labelling or dropping it, framed as protecting them.",
+  "Email their manager with the correction."],
+ a:2,
+ why:"The number is wrong and the board will act on it, so saying nothing isn't neutral. But raising it live costs your colleague credibility and costs you the relationship. A quiet message beforehand fixes the slide and makes you someone people want checking their work.",
+ trap:"<b>Speaking up is a skill, not a personality trait.</b> The script is short: 'Heads up before Thursday — last bar is only through Wednesday, might read as a full week. Worth labelling?'"},
+
+{id:"CH2",cat:"CHART",type:"mc",
+ stem:"The same chart has a y-axis starting at <strong>€180k</strong> rather than zero, which visually exaggerates the slope.",
+ q:"How do you treat this?",
+ opts:[
+  "Equally serious — demand it be changed to a zero baseline.",
+  "A defensible choice for a familiar series where the change is the point, as long as the axis is clearly labelled. Much less serious than the partial-week error.",
+  "Always wrong; charts must start at zero.",
+  "Irrelevant — executives ignore axes."],
+ a:1,
+ why:"Truncated axes are standard for tracking a series where the variation matters and the baseline is far from zero. It's a presentation choice, not a false statement. Knowing which problem is the real one keeps you from spending credibility on the small thing and having none left for the big one.",
+ trap:"<b>Calibrate your objections.</b> If you object to everything, you get ignored on the things that matter."},
+
+{id:"CH3",cat:"CHART",type:"mc",
+ stem:"A slide overlays <em>feature adoption</em> and <em>revenue</em> on two different y-axes, scaled so the lines track closely. The caption reads \"adoption drives revenue.\"",
+ q:"The core issue?",
+ opts:[
+  "Two series shouldn't share a chart.",
+  "Independent axis scaling lets you manufacture visual correlation between almost any two rising series — and the caption then upgrades it to causation.",
+  "Revenue should be plotted as bars.",
+  "The time window is too short."],
+ a:1,
+ why:"With free choice of both scales you can make any two growing lines hug each other. Two things that both grow over time will always look related. The chart is decoration; the caption is the claim, and nothing supports it.",
+ trap:"<b>Dual axes.</b> Treat them as a red flag by default. If correlation is the point, plot one against the other directly."},
+
+{id:"CH4",cat:"CHART",type:"mc",
+ stem:"A growth chart's x-axis begins in a month you recognise as an unusually weak trough following an outage.",
+ q:"What's the effect?",
+ opts:[
+  "None, as long as the data is accurate.",
+  "The growth rate is inflated by the starting point; recovery to normal is being presented as growth.",
+  "It makes the trend look worse than it is.",
+  "It only matters if the outage is undisclosed."],
+ a:1,
+ why:"Every number on the chart is accurate and the conclusion is still wrong. Recovering from a dip is not the same as growing, but on a chart they're identical shapes. Ask why this window.",
+ trap:"<b>Cherry-picked baselines.</b> The most effective way to mislead with data is choosing where the x-axis starts — no false numbers required."},
+
+{id:"CH5",cat:"CHART",type:"mc",
+ stem:"A partnerships update leads with: <em>\"Enterprise pipeline grew <strong>200%</strong> this quarter.\"</em>",
+ q:"What do you ask?",
+ opts:[
+  "Which segment drove the growth?",
+  "What are the absolute numbers? 200% could be 3 → 9 accounts.",
+  "Is the growth statistically significant?",
+  "How does that compare to last quarter?"],
+ a:1,
+ why:"Percentages on small bases are the oldest trick in reporting, and usually not even deliberate — people reach for the more impressive framing. Three to nine accounts may be genuinely good news for an early motion; it is not the same news as 300 to 900.",
+ trap:"<b>Percentage without base.</b> Make 'what's the denominator?' reflexive. Ask it in a curious tone and it never lands as an attack."},
+
+{id:"CH6",cat:"CHART",type:"mc",
+ stem:"You have to write the one-line headline above a chart showing activation up from 31% to 34% over six weeks, with a wide confidence interval.",
+ q:"Which headline is right?",
+ opts:[
+  "\"Activation is up.\"",
+  "\"Activation improved 10%.\"",
+  "\"Activation rose 3 points to 34% over six weeks — within noise so far; we'll know by month end.\"",
+  "\"Early signs are encouraging for activation.\""],
+ a:2,
+ why:"It carries a number, a direction, a timeframe, and an honest confidence level — and it tells the reader when they'll get a firmer answer. Option B is technically true and misleading (relative framing on a 3-point move). A and D say nothing a reader can act on.",
+ trap:"<b>This is your highest-leverage habit.</b> Before any chart goes in front of anyone, write the sentence it supports — with a number in it. If you can't write the sentence, you don't yet know what the chart says."},
+
+{id:"CH7",cat:"CHART",type:"mc",
+ stem:"A chart shows support tickets rising sharply over twelve months. No other series is shown.",
+ q:"What's missing?",
+ opts:[
+  "A trendline.",
+  "The denominator — user growth over the same period. Rising tickets with faster-rising users is a different story from rising tickets on flat users.",
+  "Confidence intervals.",
+  "A breakdown by ticket category."],
+ a:1,
+ why:"An absolute count with no base rate can't distinguish 'the product got worse' from 'the product got bigger'. Both interpretations fit the chart, and they call for opposite responses — fix quality, or hire support.",
+ trap:"<b>Unnormalised counts.</b> Any count that grows with the business needs its denominator alongside it."},
+
+/* ===================== DECISION FRAMING ===================== */
+{id:"DE1",cat:"DECIDE",type:"mc",
+ stem:"An AI study assistant: <strong>8%</strong> of exposed users use it heavily, <strong>92%</strong> try it once and never return. Interviews with the 8% are glowing. It costs real money per query. Your boss asks whether it's working.",
+ q:"What's the first question to resolve?",
+ opts:[
+  "Why did the 92% not return?",
+  "Is the 8% a describable segment with a shared job — or is it a random scatter of users?",
+  "What's the total cost per month?",
+  "How does usage compare to other features at this stage?"],
+ a:1,
+ why:"That one answer forks the whole decision. If the 8% are, say, final-year students in exam season, you have a real product for a definable market and you can size it and price it. If they're random, you have a novelty with no addressable segment. Interviewing the 92% is useful but slower, and 'they didn't need it' is a hard finding to act on.",
+ trap:"<b>Characterise the power users before you chase the churned ones.</b> Concentrated usage is a positioning question first, a retention question second."},
+
+{id:"DE2",cat:"DECIDE",type:"num",
+ stem:"The same feature costs <strong>€0.04 per query</strong>. Heavy users average <strong>220 queries/month</strong> and pay <strong>€25/month</strong> for the subscription.",
+ q:"What percentage of a heavy user's subscription revenue does the feature consume? (whole %)",
+ unit:"%", a:35, tol:3,
+ why:"220 × €0.04 = €8.80/month, which is <strong>35%</strong> of €25. On a subscription with content, infrastructure and support costs already loaded in, 35% of revenue to one feature's variable cost is likely gross-margin negative for your best users — you lose more the more they love it.",
+ trap:"<b>Do the unit economics before the roadmap debate.</b> For anything with per-use cost, margin at the power-user end decides whether the feature has a future, and it's a two-minute calculation."},
+
+{id:"DE3",cat:"DECIDE",type:"mc",
+ stem:"You want to kill a feature. It's been live to 5% of users for three weeks: 4% adoption among exposed users, no retention or conversion difference, 6 more weeks estimated to \"do it properly.\" Two months are already invested.",
+ q:"Which opening line is strongest with leadership?",
+ opts:[
+  "\"We've put two months into this and it isn't delivering, so I don't think we should keep going.\"",
+  "\"I'm recommending we stop this and move the team to X. Three weeks live: 4% adoption, no retention or conversion effect. Finishing costs six more weeks — here's what that buys us instead.\"",
+  "\"The metrics all speak against this feature and I don't believe in it.\"",
+  "\"I'd like to discuss whether this feature is still the right priority.\""],
+ a:1,
+ why:"It leads with the decision, supports it with three numbers, and converts the cost into the thing leadership actually trades in — team capacity against an alternative. A mentions sunk cost, which argues <em>for</em> continuing in most listeners' heads. C substitutes belief for evidence. D opens a discussion when you came to make a call.",
+ trap:"<b>Decision first, evidence second, alternative third.</b> Never lead with the history, never lead with your feelings about it."},
+
+{id:"DE4",cat:"DECIDE",type:"mc",
+ stem:"Same meeting. Someone says: \"We've already spent two months on it — walking away wastes all that work.\"",
+ q:"Best response?",
+ opts:[
+  "\"True, but the remaining six weeks is the smaller investment.\"",
+  "\"The two months are spent either way. The only question on the table is whether the next six weeks are better spent here or on X.\"",
+  "\"We learned a lot that we'll carry into other work.\"",
+  "\"I understand, but the data is clear.\""],
+ a:1,
+ why:"It names the sunk cost fallacy without the lecture, and reframes to the only live decision: forward-looking allocation. C is a consolation prize; D dismisses the concern rather than dissolving it.",
+ trap:"<b>Sunk cost.</b> Past spend is information about estimation quality, never an argument for continuing. Practise this sentence — you'll use it often."},
+
+{id:"DE5",cat:"DECIDE",type:"mc",
+ stem:"A test comes back genuinely flat on all metrics. The variant is a substantially simpler implementation that removes a legacy code path.",
+ q:"Ship or don't?",
+ opts:[
+  "Don't ship — no measured benefit means no reason to change.",
+  "Ship. 'No difference in user outcomes' plus a real engineering benefit is a good reason to change; the test licenses the simplification.",
+  "Re-run the test with more power to find a small effect.",
+  "Ship to 50% permanently and keep monitoring."],
+ a:1,
+ why:"'Not significant' means 'no evidence of a difference', not 'don't act'. A flat result is exactly the evidence you need to take the cheaper, simpler option without worrying you're harming users. Flat tests are often the most actionable ones.",
+ trap:"<b>Null results have value.</b> They let you simplify, cut cost, or stop defending something — if you've decided in advance what you'd do with one."},
+
+{id:"DE6",cat:"DECIDE",type:"mc",
+ stem:"Quarterly planning. Two candidates: (A) a checkout fix, modelled at <strong>+€40k/year</strong>, two weeks of work, high confidence. (B) a new onboarding surface, modelled at <strong>+€200k/year</strong>, ten weeks, resting on an untested assumption about what blocks new users.",
+ q:"What's the strongest move?",
+ opts:[
+  "Do A first — it's higher confidence per week of effort.",
+  "Do B — the expected value is far higher.",
+  "Ship A, and in parallel spend one week cheaply testing B's core assumption before committing ten.",
+  "Split the team across both."],
+ a:2,
+ why:"B's €200k is an estimate resting on an untested premise, so its real expected value is unknown rather than high. A week of validation either collapses the estimate — saving nine weeks — or raises your confidence enough to commit properly. Meanwhile A banks a certain return. Splitting a team across both (D) usually delivers neither on time.",
+ trap:"<b>Buy information before you buy commitment.</b> The question isn't which bet is bigger, it's which uncertainty is cheapest to remove."},
+
+{id:"DE7",cat:"DECIDE",type:"mc",
+ stem:"Analysis shows that users who complete a diagnostic quiz in week 1 are <strong>2.6×</strong> more likely to still be active at D90.",
+ q:"Which decision does this finding actually support?",
+ opts:[
+  "Make the diagnostic quiz mandatory for all new users.",
+  "Use quiz completion as an early health indicator, and test whether <em>encouraging</em> it changes D90 retention.",
+  "Invest in making the quiz better, since it drives retention.",
+  "Move the quiz earlier in onboarding."],
+ a:1,
+ why:"The finding supports a <em>prediction</em> and a <em>test</em>. All of A, C and D assume the quiz causes retention, which the data does not establish — the same motivated user both takes the quiz and sticks around. B extracts the real value (a leading indicator you can monitor today) while setting up the experiment that would license the rest.",
+ trap:"<b>Match the claim to the decision.</b> Ask: is this finding predictive or causal? Predictive findings justify monitoring and targeting. Only causal findings justify forcing behaviour."},
+
+{id:"DE8",cat:"DECIDE",type:"mc",
+ stem:"You present a recommendation to leadership and are asked: <em>\"What would change your mind?\"</em>",
+ q:"What does a strong answer look like?",
+ opts:[
+  "\"Nothing — the data is unambiguous.\"",
+  "A specific, observable condition: \"If adoption among exposed users passes 15% in the next three weeks, or the segment analysis shows a clear job we're not serving, I'd reverse this.\"",
+  "\"I'd want to see what the team thinks.\"",
+  "\"More data would help, but we need to decide now.\""],
+ a:1,
+ why:"A falsifiable condition proves you've reasoned rather than rationalised, and it converts your recommendation into something the room can check later. It's also the fastest way to build the credibility that gets your next recommendation accepted without this level of scrutiny.",
+ trap:"<b>Bring your own disconfirming condition.</b> Volunteer it before you're asked — it's the single cheapest trust-building move available to a PM."}
+];
+
+/* --------------------------- STATE --------------------------- */
+const KEY = "pmDrills.v1";
+const DAILY = 3;
+const blank = () => ({ start:todayStr(), items:{}, days:{}, commits:[], lastDay:null, streak:0 });
+
+function todayStr(d){ d=d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function dayNum(s){ const [y,m,d]=s.split("-").map(Number); return Math.floor(Date.UTC(y,m-1,d)/86400000); }
+
+let S;
+function load(){
+  try{ const r=localStorage.getItem(KEY); S = r ? Object.assign(blank(), JSON.parse(r)) : blank(); }
+  catch(e){ S = blank(); }
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+/* Pick today's 3: due reviews first (oldest due), then unseen, in category-rotating order */
+function todaysSet(){
+  const today = todayStr(), tn = dayNum(today);
+  if(S.days[today] && S.days[today].ids) return S.days[today].ids;
+
+  const due = DRILLS.filter(d=>{ const it=S.items[d.id]; return it && !it.retired && it.due!=null && it.due<=tn; })
+                    .sort((a,b)=> (S.items[a.id].due) - (S.items[b.id].due));
+  const unseen = DRILLS.filter(d=> !S.items[d.id]);
+
+  // rotate categories through the unseen pool so a day isn't all one topic
+  const byCat = {}; unseen.forEach(d=>{ (byCat[d.cat]=byCat[d.cat]||[]).push(d); });
+  const order = Object.keys(CATS).filter(c=>byCat[c]);
+  const seenCount = Object.keys(S.items).length;
+  const rotated = [];
+  let i=0;
+  while(rotated.length < unseen.length){
+    const c = order[(i+seenCount) % order.length];
+    if(byCat[c] && byCat[c].length) rotated.push(byCat[c].shift());
+    if(order.every(c=>!byCat[c].length)) break;
+    i++;
+  }
+
+  const ids = [...due, ...rotated].slice(0, DAILY).map(d=>d.id);
+  S.days[today] = { ids, results:{} };
+  save();
+  return ids;
+}
+
+function grade(id, ok){
+  const tn = dayNum(todayStr());
+  const it = S.items[id] || (S.items[id] = { streak:0, seen:0, right:0, retired:false, due:null });
+  it.seen++;
+  if(ok){ it.right++; it.streak++; }
+  else { it.streak = 0; }
+  // spaced repetition
+  if(!ok) it.due = tn + 2;
+  else if(it.streak === 1 && it.seen > 1) it.due = tn + 7;   // recovered a previously missed drill
+  else if(it.streak >= 2) { it.retired = true; it.due = null; }
+  else it.due = null;                                        // first-time correct: done
+  const today = todayStr();
+  S.days[today].results[id] = ok;
+  save();
+}
+
+function updateStreak(){
+  const today = todayStr(), tn = dayNum(today);
+  const d = S.days[today];
+  if(!d || Object.keys(d.results).length < DAILY) return;
+  if(S.lastDay === today) return;
+  S.streak = (S.lastDay && dayNum(S.lastDay) === tn-1) ? S.streak+1 : 1;
+  S.lastDay = today;
+  save();
+}
+
+/* --------------------------- RENDER --------------------------- */
+const main = document.getElementById("main");
+const esc = s => String(s).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
+function render(){
+  const ids = todaysSet();
+  const today = todayStr();
+  const res = S.days[today].results;
+  renderHeader(ids, res);
+
+  const next = ids.find(id => !(id in res));
+  if(next) renderDrill(next, ids.indexOf(next), ids.length);
+  else { updateStreak(); renderHeader(ids, res); renderDone(); }
+}
+
+function renderHeader(ids, res){
+  const done = Object.keys(res).length;
+  document.getElementById("sub").textContent =
+    done >= ids.length ? "Done for today" : `Drill ${done+1} of ${ids.length}`;
+  document.getElementById("streak").textContent =
+    S.streak > 0 ? `🔥 ${S.streak}d` : "Day 1";
+  const p = document.getElementById("prog");
+  p.innerHTML = "";
+  ids.forEach((id,i)=>{
+    const pip = document.createElement("div");
+    pip.className = "pip " + (id in res ? (res[id] ? "done" : "wrong") : (i === Object.keys(res).length ? "active" : ""));
+    p.appendChild(pip);
+  });
+  const retired = Object.values(S.items).filter(i=>i.retired).length;
+  document.getElementById("footnote").textContent =
+    `${retired} of ${DRILLS.length} drills retired · missed drills return in 2 days`;
+}
+
+function tableHTML(rows){
+  if(!rows) return "";
+  const [head, ...body] = rows;
+  return `<table><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>`
+       + `<tbody>${body.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+function renderDrill(id){
+  const d = DRILLS.find(x=>x.id===id);
+  const it = S.items[id];
+  const isReview = !!it;
+
+  main.innerHTML = `
+    <div class="card">
+      <div class="tagrow">
+        <span class="tag">${esc(CATS[d.cat])}</span>
+        ${isReview ? '<span class="tag rev">Review</span>' : ''}
+      </div>
+      <p class="stem">${d.stem}</p>
+      ${tableHTML(d.table)}
+      <p class="q">${d.q}</p>
+      <div id="input"></div>
+      <div id="fb"></div>
+    </div>`;
+
+  const box = document.getElementById("input");
+
+  if(d.type === "num"){
+    box.innerHTML = `
+      <div class="numrow">
+        <input id="numin" type="text" inputmode="decimal" autocomplete="off" placeholder="?" aria-label="Your answer">
+        <button class="btn" id="go">Check</button>
+      </div>
+      <div class="unit">${esc(d.unit||"")} · commit to a number before you look for options</div>`;
+    const inp = document.getElementById("numin");
+    const submit = () => {
+      const v = parseFloat(String(inp.value).replace(",", ".").replace(/[^0-9.\-]/g,""));
+      if(isNaN(v)) { inp.focus(); return; }
+      const ok = Math.abs(v - d.a) <= (d.tol ?? 0.5);
+      inp.disabled = true; document.getElementById("go").disabled = true;
+      showFB(d, ok, `You said <strong>${v}${d.unit==="%"?"%":""}</strong> · answer <strong>${d.a}${d.unit==="%"?"%":""}</strong>`);
+      grade(id, ok);
+    };
+    document.getElementById("go").onclick = submit;
+    inp.addEventListener("keydown", e => { if(e.key === "Enter") submit(); });
+    setTimeout(()=>inp.focus(), 120);
+  } else {
+    box.innerHTML = `<div class="opts">${d.opts.map((o,i)=>
+      `<button class="opt" data-i="${i}"><span class="ltr">${"ABCD"[i]}</span><span>${o}</span></button>`).join("")}</div>`;
+    box.querySelectorAll(".opt").forEach(btn=>{
+      btn.onclick = () => {
+        const i = +btn.dataset.i, ok = i === d.a;
+        box.querySelectorAll(".opt").forEach((b,j)=>{
+          b.disabled = true;
+          if(j === d.a) b.classList.add("correct");
+          else if(j === i) b.classList.add("incorrect");
+          else b.classList.add("dim");
+        });
+        showFB(d, ok, "");
+        grade(id, ok);
+      };
+    });
+  }
+}
+
+function showFB(d, ok, extra){
+  const fb = document.getElementById("fb");
+  fb.innerHTML = `
+    <div class="fb ${ok?"ok":"no"}">
+      <div class="verdict">${ok?"Correct":"Not quite"}</div>
+      ${extra?`<p>${extra}</p>`:""}
+      <p>${d.why}</p>
+      <div class="trap">${d.trap}</div>
+    </div>
+    <button class="btn block" id="next">Continue</button>`;
+  document.getElementById("next").onclick = () => { render(); window.scrollTo(0,0); };
+  fb.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+function renderDone(){
+  const today = todayStr();
+  const res = S.days[today].results;
+  const right = Object.values(res).filter(Boolean).length;
+
+  // lifetime per-category accuracy
+  const stats = {};
+  Object.keys(CATS).forEach(c=>stats[c]={seen:0,right:0});
+  DRILLS.forEach(d=>{ const it=S.items[d.id]; if(it && it.seen){ stats[d.cat].seen+=it.seen; stats[d.cat].right+=it.right; } });
+
+  const totalSeen = Object.values(stats).reduce((a,b)=>a+b.seen,0);
+  const totalRight = Object.values(stats).reduce((a,b)=>a+b.right,0);
+  const retired = Object.values(S.items).filter(i=>i.retired).length;
+  const savedToday = S.commits.find(c=>c.d===today);
+
+  main.innerHTML = `
+    <div class="card">
+      <h2 class="done-h">${right} of ${DAILY} today</h2>
+      <p class="done-p">${right===DAILY ? "Clean sweep. Come back tomorrow." : "The ones you missed come back in two days."}</p>
+      <div class="stats">
+        <div class="stat"><div class="n">${S.streak||1}</div><div class="l">day streak</div></div>
+        <div class="stat"><div class="n">${totalSeen?Math.round(100*totalRight/totalSeen):0}%</div><div class="l">lifetime accuracy</div></div>
+        <div class="stat"><div class="n">${retired}<span style="font-size:13px;color:var(--muted)">/${DRILLS.length}</span></div><div class="l">retired</div></div>
+      </div>
+      <div class="sect-h">By category</div>
+      ${Object.keys(CATS).map(c=>{
+        const s = stats[c];
+        const pct = s.seen ? Math.round(100*s.right/s.seen) : null;
+        const cls = pct===null?"":(pct<60?"low":pct<80?"mid":"");
+        return `<div class="catrow"><span class="nm">${esc(CATS[c])}</span>
+          <span class="bar"><i class="${cls}" style="width:${pct===null?0:pct}%"></i></span>
+          <span class="pct">${pct===null?"—":pct+"%"}</span></div>`;
+      }).join("")}
+    </div>
+
+    <div class="card commit">
+      <div class="sect-h" style="margin-top:0">Today's rep</div>
+      <label for="cm">Write one sentence, with a number in it, about something you actually looked at today.</label>
+      <div class="hint">This is the habit the drills can't build for you. Not "engagement looks okay" — "D7 activation is 34%, down 2 points from last month, and I don't yet know why."</div>
+      <textarea id="cm" placeholder="…">${savedToday?esc(savedToday.t):""}</textarea>
+      <button class="btn block" id="savecm">${savedToday?"Update":"Save"}</button>
+    </div>
+
+    ${S.commits.length ? `<div class="card">
+      <div class="sect-h" style="margin-top:0">Previous reps</div>
+      <div class="log">${S.commits.slice().reverse().slice(0,12).map(c=>
+        `<div class="e"><div class="d">${esc(c.d)}</div>${esc(c.t)}</div>`).join("")}</div>
+    </div>` : ""}`;
+
+  document.getElementById("savecm").onclick = () => {
+    const t = document.getElementById("cm").value.trim();
+    if(!t) return;
+    const i = S.commits.findIndex(c=>c.d===today);
+    if(i>=0) S.commits[i].t = t; else S.commits.push({d:today, t});
+    save();
+    const b = document.getElementById("savecm");
+    b.textContent = "Saved ✓"; b.disabled = true;
+    setTimeout(()=>{ b.disabled=false; b.textContent="Update"; }, 1400);
+  };
+}
+
+/* Service worker — enables offline use when served over https */
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
+
+document.getElementById("reset").onclick = () => {
+  if(confirm("Erase all progress, streaks and saved sentences?")){
+    try{ localStorage.removeItem(KEY); }catch(e){}
+    load(); render(); window.scrollTo(0,0);
+  }
+};
+
+load();
+render();
+</script>
+</body>
+</html>
